@@ -1,27 +1,33 @@
-import micro from 'micro'
 import fetch from 'isomorphic-unfetch'
 
-export default micro(async (req, res) => {
+export default async (req, res) => {
   if (!('authorization' in req.headers)) {
-    throw micro.createError(401, 'Authorization header mising')
+    return res.status(401).send('Authorization header missing')
   }
 
   const auth = await req.headers.authorization
-  const { token } = JSON.parse(auth)
-  const url = `https://api.github.com/user/${token}`
 
   try {
+    const { token } = JSON.parse(auth)
+    const url = `https://api.github.com/user/${token}`
+
     const response = await fetch(url)
 
     if (response.ok) {
       const js = await response.json()
       // Need camelcase in the frontend
       const data = Object.assign({}, { avatarUrl: js.avatar_url }, js)
-      micro.send(res, 200, { data })
+      return res.status(200).json({ data })
     } else {
-      micro.send(res, response.status, response.statusText)
+      // https://github.com/developit/unfetch#caveats
+      const error = new Error(response.statusText)
+      error.response = response
+      throw error
     }
   } catch (error) {
-    throw micro.createError(error.statusCode, error.statusText)
+    const { response } = error
+    return response
+      ? res.status(response.status).json({ message: response.statusText })
+      : res.status(400).json({ message: error.message })
   }
-})
+}
