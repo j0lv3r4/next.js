@@ -1,9 +1,17 @@
 declare module '@babel/plugin-transform-modules-commonjs'
-declare module 'next-server/next-config'
-declare module 'next-server/constants'
 declare module 'webpack/lib/GraphHelpers'
+declare module 'webpack/lib/DynamicEntryPlugin'
 declare module 'unfetch'
+declare module 'launch-editor'
 declare module 'styled-jsx/server'
+declare module 'async-retry'
+declare module 'browserslist'
+
+declare module 'cssnano-simple' {
+  import { Plugin } from 'postcss'
+  const cssnanoSimple: Plugin<{}>
+  export = cssnanoSimple
+}
 
 declare module 'next/dist/compiled/nanoid/index.js' {
   function nanoid(size?: number): string
@@ -76,15 +84,52 @@ declare module 'autodll-webpack-plugin' {
       entry?: webpack.Entry
       config?: webpack.Configuration
     })
-    apply: webpack.Plugin['apply']
+    apply: webpack.Plugin['apply'];
     [k: string]: any
   }
 
   export = AutoDllPlugin
 }
 
+declare module 'pnp-webpack-plugin' {
+  import webpack from 'webpack'
+  import ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin'
+
+  class PnpWebpackPlugin extends webpack.Plugin {
+    static forkTsCheckerOptions: <
+      T extends Partial<ForkTsCheckerWebpackPlugin.Options>
+    >(
+      settings: T
+    ) => T & {
+      resolveModuleNameModule?: string
+      resolveTypeReferenceDirectiveModule?: string
+    }
+  }
+
+  export = PnpWebpackPlugin
+}
+
 declare module NodeJS {
+  interface ProcessVersions {
+    pnp?: string
+  }
   interface Process {
     crossOrigin?: string
   }
+}
+
+declare module 'watchpack' {
+  import { EventEmitter } from 'events'
+
+  class Watchpack extends EventEmitter {
+    watch(files: string[], directories: string[], startTime?: number): void
+    close(): void
+
+    getTimeInfoEntries(): Map<
+      string,
+      { safeTime: number; timestamp: number; accuracy?: number }
+    >
+  }
+
+  export default Watchpack
 }

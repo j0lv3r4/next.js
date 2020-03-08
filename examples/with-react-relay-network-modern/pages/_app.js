@@ -1,6 +1,6 @@
 import React from 'react'
 import { QueryRenderer, fetchQuery } from 'react-relay'
-import NextApp, { Container } from 'next/app'
+import NextApp from 'next/app'
 
 import { initEnvironment, createEnvironment } from '../lib/createEnvironment'
 
@@ -18,7 +18,7 @@ export default class App extends NextApp {
 
         return {
           variables,
-          relayData: await relaySSR.getCache()
+          relayData: await relaySSR.getCache(),
         }
       }
     } catch (e) {
@@ -26,33 +26,31 @@ export default class App extends NextApp {
     }
 
     return {
-      variables
+      variables,
     }
   }
 
-  render () {
+  render() {
     const { Component, variables = {}, relayData } = this.props
     const environment = createEnvironment(
       relayData,
       JSON.stringify({
         queryID: Component.query ? Component.query().params.name : undefined,
-        variables
+        variables,
       })
     )
 
     return (
-      <Container>
-        <QueryRenderer
-          environment={environment}
-          query={Component.query}
-          variables={variables}
-          render={({ error, props }) => {
-            if (error) return <div>{error.message}</div>
-            else if (props) return <Component {...props} />
-            return <div>Loading</div>
-          }}
-        />
-      </Container>
+      <QueryRenderer
+        environment={environment}
+        query={Component.query}
+        variables={variables}
+        render={({ error, props }) => {
+          if (error) return <div>{error.message}</div>
+          else if (props) return <Component {...props} />
+          return <div>Loading</div>
+        }}
+      />
     )
   }
 }

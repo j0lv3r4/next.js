@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-import { resolve, join } from 'path'
 import { existsSync } from 'fs'
 import arg from 'next/dist/compiled/arg/index.js'
+import { resolve } from 'path'
+
+import { cliCommand } from '../bin/next'
 import build from '../build'
 import { printAndExit } from '../server/lib/utils'
-import { cliCommand } from '../bin/next'
 
 const nextBuild: cliCommand = argv => {
   const args = arg(
@@ -41,24 +42,10 @@ const nextBuild: cliCommand = argv => {
     printAndExit(`> No such directory exists as the project root: ${dir}`)
   }
 
-  // Check if the pages directory exists
-  if (!existsSync(join(dir, 'pages'))) {
-    // Check one level down the tree to see if the pages directory might be there
-    if (existsSync(join(dir, '..', 'pages'))) {
-      printAndExit(
-        '> No `pages` directory found. Did you mean to run `next` in the parent (`../`) directory?'
-      )
-    }
-
-    printAndExit(
-      "> Couldn't find a `pages` directory. Please create one under the project root"
-    )
-  }
-
   build(dir)
     .then(() => process.exit(0))
     .catch(err => {
-      // tslint:disable-next-line
+      console.error('')
       console.error('> Build error occurred')
       printAndExit(err)
     })

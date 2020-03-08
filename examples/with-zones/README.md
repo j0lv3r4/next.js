@@ -1,13 +1,21 @@
 # Using multiple zones
 
+With Next.js you can use multiple apps as a single app using it's [multi-zones feature](https://nextjs.org/docs#multi-zones). This is an example showing how to use it.
+
+## Deploy your own
+
+Deploy the example using [ZEIT Now](https://zeit.co/now):
+
+[![Deploy with ZEIT Now](https://zeit.co/button)](https://zeit.co/import/project?template=https://github.com/zeit/next.js/tree/canary/examples/with-zones)
+
 ## How to use
 
 ### Using `create-next-app`
 
-Execute [`create-next-app`](https://github.com/segmentio/create-next-app) with [Yarn](https://yarnpkg.com/lang/en/docs/cli/create/) or [npx](https://github.com/zkat/npx#readme) to bootstrap the example:
+Execute [`create-next-app`](https://github.com/zeit/next.js/tree/canary/packages/create-next-app) with [npm](https://docs.npmjs.com/cli/init) or [Yarn](https://yarnpkg.com/lang/en/docs/cli/create/) to bootstrap the example:
 
 ```bash
-npx create-next-app --example with-zones with-zones-app
+npm init next-app --example with-zones with-zones-app
 # or
 yarn create next-app --example with-zones with-zones-app
 ```
@@ -21,59 +29,31 @@ curl https://codeload.github.com/zeit/next.js/tar.gz/canary | tar -xz --strip=2 
 cd with-zones
 ```
 
-Install it and run:
+## Notes
+
+In this example, we have two apps: 'home' and 'blog'. You can start each app separately, for example:
 
 ```bash
-npm install
-# or
-yarn
+cd blog
+yarn dev
 ```
 
-## The idea behind this example
-
-With Next.js you can use multiple apps as a single app using it's multi-zones feature.
-This is an example showing how to use it.
-
-In this example, we've two apps: 'home' and 'blog'. We'll start both apps with [Now](https://zeit.co/now):
-We also have a set of builders and routes defined in `now.json`.
-
-```bash
-now dev
-```
-
-Now you can visit http://localhost:3000 and develop for both apps as a single app.
-
-### Now config
-
-`now.json` allows us to create a single dev server for any builders and routes we add to it, with `now dev` we can easily create a dev server for multiple apps without having to deploy or setup anything else:
-
-```json
-{
-  "name": "with-zones",
-  "version": 2,
-  "builds": [
-    { "src": "blog/next.config.js", "use": "@now/next" },
-    { "src": "home/next.config.js", "use": "@now/next" }
-  ],
-  "routes": [
-    { "src": "/blog/_next(.*)", "dest": "blog/_next$1" },
-    { "src": "/blog", "dest": "blog/blog" },
-    { "src": "(.*)", "dest": "home$1" }
-  ]
-}
-```
-
-The previous file is based in the [@now/next](https://zeit.co/docs/v2/deployments/official-builders/next-js-now-next/) builder and [Now Routes](https://zeit.co/docs/v2/deployments/routes/) from Now V2.
+Then, you can visit <http://localhost:3000> and develop your app.
 
 ## Special Notes
 
-- All pages should be unique across zones. A page with the same name should not exist in multiple zones. Otherwise, there'll be unexpected behaviours in client side navigation.
-  - According to the above example, a page named `blog` should not be exist in the `home` zone.
+- All pages should be unique across zones. For example, the 'home' app should not have a `pages/blog/index.js` page.
+- The 'blog' app sets `assetPrefix` so that generated JS bundles are within the `/blog` subfolder.
+  - To also support the plain `next dev` scenario, `assetPrefix` is set dynamically based on the `BUILDING_FOR_NOW` environment variable, see [`now.json`](now.json) and [`blog/next.config.js`](blog/next.config.js).
+  - Images and other `/static` assets have to be prefixed manually, e.g., `` <img src={`${process.env.ASSET_PREFIX}/static/image.png`} /> ``, see [`blog/pages/blog/index.js`](blog/pages/blog/index.js).
 
 ## Production Deployment
 
-We only need to run `now`, the same `now.json` used for development will be used for the deployment:
+We only need to run `now <app>`, to deploy the app:
 
 ```bash
-now
+now blog
+now home
 ```
+
+> The rewrite destination in your `now.json` file in the `home` app must be adjusted to point to your deployment.

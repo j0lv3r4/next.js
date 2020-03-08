@@ -20,10 +20,12 @@ export class TerserPlugin {
       cache = false,
       cpus,
       distDir,
+      workerThreads,
     } = options
 
     this.cpus = cpus
     this.distDir = distDir
+    this.workerThreads = workerThreads
     this.options = {
       warningsFilter,
       sourceMap,
@@ -133,6 +135,7 @@ export class TerserPlugin {
         distDir: this.distDir,
         cpus: this.cpus,
         cache: this.options.cache,
+        workerThreads: this.workerThreads,
       })
 
       const processedAssets = new WeakSet()

@@ -16,6 +16,11 @@ export function startedDevelopmentServer(appUrl: string) {
 let previousClient: any = null
 let previousServer: any = null
 
+type CompilerDiagnosticsWithFile = {
+  errors: { file: string | undefined; message: string }[] | null
+  warnings: { file: string | undefined; message: string }[] | null
+}
+
 type CompilerDiagnostics = {
   errors: string[] | null
   warnings: string[] | null
@@ -33,9 +38,10 @@ type AmpStatus = {
   line: number
   col: number
   specUrl: string | null
+  code: string
 }
 
-type AmpPageStatus = {
+export type AmpPageStatus = {
   [page: string]: { errors: AmpStatus[]; warnings: AmpStatus[] }
 }
 
@@ -84,7 +90,16 @@ export function formatAmpMessages(amp: AmpPageStatus) {
   }
 
   for (const page in amp) {
-    const { errors, warnings } = amp[page]
+    let { errors, warnings } = amp[page]
+
+    const devOnlyFilter = (err: AmpStatus) => err.code !== 'DEV_MODE_ONLY'
+    errors = errors.filter(devOnlyFilter)
+    warnings = warnings.filter(devOnlyFilter)
+    if (!(errors.length || warnings.length)) {
+      // Skip page with no non-dev warnings
+      continue
+    }
+
     if (errors.length) {
       ampError(page, errors[0])
       for (let index = 1; index < errors.length; ++index) {
@@ -98,6 +113,10 @@ export function formatAmpMessages(amp: AmpPageStatus) {
       }
     }
     messages.push(['', '', '', ''])
+  }
+
+  if (!messages.length) {
+    return ''
   }
 
   output += textTable(messages, {
@@ -154,7 +173,8 @@ buildStore.subscribe(state => {
       }
 
       if (Object.keys(amp).length > 0) {
-        warnings = (warnings || []).concat(formatAmpMessages(amp))
+        warnings = (warnings || []).concat(formatAmpMessages(amp) || [])
+        if (!warnings.length) warnings = null
       }
     }
 
@@ -182,6 +202,7 @@ export function ampValidation(
       amp: Object.keys(amp)
         .filter(k => k !== page)
         .sort()
+        // eslint-disable-next-line no-sequences
         .reduce((a, c) => ((a[c] = amp[c]), a), {} as any),
     })
     return
@@ -191,6 +212,7 @@ export function ampValidation(
   buildStore.setState({
     amp: Object.keys(newAmp)
       .sort()
+      // eslint-disable-next-line no-sequences
       .reduce((a, c) => ((a[c] = newAmp[c]), a), {} as any),
   })
 }
@@ -216,8 +238,8 @@ export function watchCompilers(
     hasTypeChecking: boolean,
     onEvent: (status: WebpackStatus) => void
   ) {
-    let tsMessagesPromise: Promise<CompilerDiagnostics> | undefined
-    let tsMessagesResolver: (diagnostics: CompilerDiagnostics) => void
+    let tsMessagesPromise: Promise<CompilerDiagnosticsWithFile> | undefined
+    let tsMessagesResolver: (diagnostics: CompilerDiagnosticsWithFile) => void
 
     compiler.hooks.invalid.tap(`NextJsInvalid-${key}`, () => {
       tsMessagesPromise = undefined
@@ -244,10 +266,16 @@ export function watchCompilers(
 
             const errors = allMsgs
               .filter(msg => msg.severity === 'error')
-              .map(format)
+              .map(d => ({
+                file: (d.file || '').replace(/\\/g, '/'),
+                message: format(d),
+              }))
             const warnings = allMsgs
               .filter(msg => msg.severity === 'warning')
-              .map(format)
+              .map(d => ({
+                file: (d.file || '').replace(/\\/g, '/'),
+                message: format(d),
+              }))
 
             tsMessagesResolver({
               errors: errors.length ? errors : null,
@@ -264,8 +292,8 @@ export function watchCompilers(
         stats.toJson({ all: false, warnings: true, errors: true })
       )
 
-      const hasErrors = errors && errors.length
-      const hasWarnings = warnings && warnings.length
+      const hasErrors = !!errors?.length
+      const hasWarnings = !!warnings?.length
 
       onEvent({
         loading: false,
@@ -283,8 +311,29 @@ export function watchCompilers(
             return
           }
 
-          stats.compilation.errors.push(...(typeMessages.errors || []))
-          stats.compilation.warnings.push(...(typeMessages.warnings || []))
+          const reportFiles = stats.compilation.modules
+            .map((m: any) => (m.resource || '').replace(/\\/g, '/'))
+            .filter(Boolean)
+
+          let filteredErrors = typeMessages.errors
+            ? typeMessages.errors
+                .filter(({ file }) => file && reportFiles.includes(file))
+                .map(({ message }) => message)
+            : null
+          if (filteredErrors && filteredErrors.length < 1) {
+            filteredErrors = null
+          }
+          let filteredWarnings = typeMessages.warnings
+            ? typeMessages.warnings
+                .filter(({ file }) => file && reportFiles.includes(file))
+                .map(({ message }) => message)
+            : null
+          if (filteredWarnings && filteredWarnings.length < 1) {
+            filteredWarnings = null
+          }
+
+          stats.compilation.errors.push(...(filteredErrors || []))
+          stats.compilation.warnings.push(...(filteredWarnings || []))
           onTypeChecked({
             errors: stats.compilation.errors.length
               ? stats.compilation.errors
@@ -297,10 +346,10 @@ export function watchCompilers(
           onEvent({
             loading: false,
             typeChecking: false,
-            errors: typeMessages.errors,
+            errors: filteredErrors,
             warnings: hasWarnings
-              ? [...warnings, ...(typeMessages.warnings || [])]
-              : typeMessages.warnings,
+              ? [...warnings, ...(filteredWarnings || [])]
+              : filteredWarnings,
           })
         })
       }

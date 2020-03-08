@@ -1,9 +1,9 @@
-import App, { Container } from 'next/app'
+import App from 'next/app'
 import React from 'react'
 import FelaProvider from '../FelaProvider'
 
 export default class MyApp extends App {
-  static async getInitialProps ({ Component, ctx }) {
+  static async getInitialProps({ Component, ctx }) {
     let pageProps = {}
 
     if (Component.getInitialProps) {
@@ -13,14 +13,12 @@ export default class MyApp extends App {
     return { pageProps }
   }
 
-  render () {
+  render() {
     const { Component, pageProps, renderer } = this.props
     return (
-      <Container>
-        <FelaProvider renderer={renderer}>
-          <Component {...pageProps} />
-        </FelaProvider>
-      </Container>
+      <FelaProvider renderer={renderer}>
+        <Component {...pageProps} />
+      </FelaProvider>
     )
   }
 }
